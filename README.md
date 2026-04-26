@@ -11,7 +11,7 @@ Monorepo das **9 skills** do **Cockpit** — stack de IA pra agências de tráfe
 | `cockpit-onboarding` | Onboarda cliente novo (pasta, dossiê inicial, acessos, contrato) | ✅ | Kick R$497 |
 | `cockpit-dossie` | Cria/completa dossiê do cliente via entrevista + pesquisa automática | ✅ | Kick R$497 |
 | `cockpit-meta` | Gestão Meta Ads (Facebook/Instagram) por linguagem natural | ✅ | Kick R$497 |
-| `cockpit-watch` | Monitor 24/7 Meta Ads. Alertas Telegram via n8n | ✅ | Install R$997 |
+| `cockpit-guardiao` | Monitor 24/7 Meta Ads. Alertas Telegram via n8n | ✅ | Install R$997 |
 | `cockpit-track` | Tracking server-side via Cloudflare (Meta CAPI + GA4) | 🚧 | Install R$997 |
 | `cockpit-google` | Gestão Google Ads por linguagem natural | 🚧 | Install R$997 |
 | `cockpit-debrief` | Análise pós-campanha em 5 min (cruza Meta + planilhas) | ✅ | Install R$997 |

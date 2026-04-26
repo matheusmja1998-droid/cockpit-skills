@@ -1,5 +1,5 @@
 ---
-name: cockpit-watch
+name: cockpit-guardiao
 description: Cria o sistema Guardião (monitoramento 24/7 de anúncios Meta Ads via n8n + Claude API + Telegram) pra um cliente da WinVision. Use quando o Matheus disser "cria um Guardião pra [cliente]", "monta o Guardião pro lançamento X", "quero monitorar os anúncios do [cliente]", "Guardião pro Caio/Kleber/EV/Jonas/Fábio". Também dispara com /guardiao.
 ---
 
