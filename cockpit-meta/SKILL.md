@@ -3,6 +3,197 @@ name: cockpit-meta
 description: Gerencia campanhas Meta Ads (Facebook/Instagram) via SDK oficial. Le campanhas, conjuntos, anuncios, criativos e insights. Cria, edita, pausa, duplica e deleta objetos. Busca interesses, comportamentos e geolocalizacoes para targeting. Troca url_tags em criativos existentes. Use quando o usuario mencionar meta ads, facebook ads, instagram ads, campanha, conjunto de anuncios, ad set, criativo, targeting, publico, insights, metricas de anuncio, duplicar campanha, url_tags, utm, criar campanha, pausar campanha, orcamento de campanha, audiencia, lookalike, pixel. Tambem dispara com /meta-ads-ratos setup.
 ---
 
+---
+
+## 🚀 Setup conversacional (primeira vez)
+
+> Quando o usuário rodar `/cockpit-meta` pela primeira vez (sem `META_USER_TOKEN` configurado no `.env`) ou rodar `/cockpit-meta setup`, executar esse fluxo guiado.
+
+### Passo 1 — Verificar se já está configurado
+
+Checar:
+```bash
+grep -E "^META_USER_TOKEN=.+" ~/Cockpit/.env 2>/dev/null
+```
+
+**Se já tem token configurado:** perguntar:
+> "Cockpit Meta já tem token configurado. Tu quer:
+> 1. Continuar usando o atual
+> 2. Reconfigurar do zero (vai perder o token atual)"
+
+**Se NÃO tem:** ir direto pro Passo 2.
+
+### Passo 2 — Verificar pré-requisitos
+
+Mostrar pro usuário:
+> "Pra configurar Cockpit Meta, vou te guiar pra criar um App no Meta Developers. Antes de começar, confirma:
+>
+> ✅ Tu tem acesso de admin no Meta Business Manager?
+> ✅ Tu tá logado no Facebook com a conta que administra esse BM?
+>
+> (sim/não)"
+
+Se "não" pra alguma: pedir pra resolver antes de continuar (precisa ser admin, senão API não funciona).
+
+### Passo 3 — Criar App no Meta Developers
+
+Mensagem ao usuário:
+> "Beleza. Abre essa URL numa aba nova:
+>
+> 🔗 https://developers.facebook.com/apps/
+>
+> E me confirma quando estiver lá."
+
+Aguardar confirmação. Aí:
+
+> "Agora segue esses cliques:
+>
+> 1. Botão verde **Criar Aplicativo**
+> 2. Caso de uso: **Outro** → Avançar
+> 3. Tipo: **Empresa** → Avançar
+> 4. Nome do app: digite `Cockpit [Nome da Tua Agência]` (ex: Cockpit MJ Tráfego)
+> 5. E-mail: o e-mail principal da agência
+> 6. Conta empresarial: selecione o BM da agência
+> 7. **Criar app** (vai pedir tua senha do FB)
+>
+> Me confirma quando o app tiver criado."
+
+### Passo 4 — Pegar App ID e App Secret
+
+> "Show. Agora no menu lateral esquerdo: **Configurações → Básico**.
+>
+> Vai aparecer 2 valores:
+> - **ID do Aplicativo** (15 dígitos)
+> - **Chave Secreta** (clica em 'Mostrar', cola tua senha do FB, copia)
+>
+> Me passa esses dois valores aqui no chat — vou salvar no `.env` automaticamente."
+
+Aguardar. Salvar:
+```bash
+mkdir -p ~/Cockpit
+cat >> ~/Cockpit/.env << EOF
+META_APP_ID={{app_id}}
+META_APP_SECRET={{app_secret}}
+EOF
+```
+
+### Passo 5 — Pegar User Access Token
+
+> "Agora vamos pegar o token. Volta no menu lateral: **Ferramentas → Explorador da API do Graph**.
+>
+> Na tela do Graph API Explorer:
+>
+> 1. Em **Aplicativo Meta**, troca pro app que acabamos de criar
+> 2. Em **Tipo de Token**, deixa **Token de acesso do usuário**
+> 3. Clica em **Editar permissões** e marca essas 5:
+>    - `ads_management`
+>    - `ads_read`
+>    - `business_management`
+>    - `read_insights`
+>    - `pages_show_list`
+> 4. Clica em **Continuar**
+> 5. Aprova as permissões no popup
+> 6. Clica em **Gerar token de acesso**
+> 7. Copia o token gerado (começa com `EAA...`)
+>
+> Me cola o token aqui."
+
+Aguardar. Salvar temporariamente:
+```bash
+echo "META_USER_TOKEN_TEMP={{token_temp}}" >> ~/Cockpit/.env
+```
+
+### Passo 6 — Trocar por token de longa duração (60 dias)
+
+> "Esse token dura só 2h. Vou trocar por um que dura 60 dias."
+
+Rodar:
+```bash
+source ~/Cockpit/.env
+curl -s "https://graph.facebook.com/v19.0/oauth/access_token?grant_type=fb_exchange_token&client_id=$META_APP_ID&client_secret=$META_APP_SECRET&fb_exchange_token=$META_USER_TOKEN_TEMP" | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])"
+```
+
+Pegar o token retornado e salvar:
+```bash
+# Remove a linha temp
+sed -i '' '/META_USER_TOKEN_TEMP/d' ~/Cockpit/.env
+# Adiciona o token de 60 dias
+echo "META_USER_TOKEN={{token_60d}}" >> ~/Cockpit/.env
+```
+
+> "✅ Token de 60 dias salvo no .env."
+
+### Passo 7 — Configurar Política de Privacidade + Ativar App
+
+> "Última parte da configuração no Meta Developers. Volta em **Configurações → Básico**.
+>
+> Preenche esses campos:
+>
+> 1. **URL da Política de Privacidade**
+>    - Se tua agência tem site: `https://[teu-site]/privacidade`
+>    - Se não tem: cria página rápida no Google Sites com esse texto:
+>
+>    ```
+>    Política de Privacidade — [Nome da Agência]
+>
+>    A [Agência] respeita a privacidade dos usuários e parceiros.
+>    Coletamos apenas dados necessários para a operação dos serviços
+>    contratados, com autorização explícita do cliente.
+>    Não compartilhamos dados com terceiros.
+>    Contato: contato@[agência].com
+>    ```
+>
+> 2. **URL dos Termos de Serviço:** mesma URL ou similar
+> 3. **Categoria:** Negócios e páginas
+> 4. **Ícone do app (1024x1024):** logo da agência (ou criar placeholder no Canva)
+>
+> Clica em **Salvar Alterações**.
+>
+> Depois, no topo da página tem um toggle **Modo de Desenvolvimento / Live**. Clica pra mudar pra **Live**.
+>
+> Se a Meta pedir Business Verification, sem stress — pode levar 24-48h pra aprovar. O token de 60 dias funciona normal enquanto isso.
+>
+> Me confirma quando o app tiver Live."
+
+### Passo 8 — Mapear contas de anúncio
+
+```bash
+# Lista todas as contas que o token tem acesso
+curl -s "https://graph.facebook.com/v19.0/me/adaccounts?access_token=$META_USER_TOKEN&fields=id,name,account_status" | python3 -m json.tool
+```
+
+Mostrar lista pro usuário e salvar em `~/Cockpit/_contexto/contas-meta.md`.
+
+### Passo 9 — Teste de validação ao vivo
+
+> "Vamos testar agora. Vou listar as campanhas ativas das tuas contas."
+
+Rodar comando-teste e mostrar resultado.
+
+### Passo 10 — Confirmação + próximos passos
+
+> "✅ **Cockpit Meta configurado e funcionando.**
+>
+> Tu já pode usar comandos como:
+>
+> - `/cockpit-meta listar campanhas`
+> - `/cockpit-meta pausa campanhas com CPA acima de R$80`
+> - `/cockpit-meta duplica conjunto X e troca pra lookalike de compradores`
+>
+> **Próxima skill da sequência:**
+>
+> Se tu comprou **Kick R$497**: tu tá com tudo. Pode rodar Onboarding e Dossiê pros teus clientes agora.
+>
+> Se tu comprou **Install R$997+**: próxima skill a instalar é **Cockpit Guardião** (monitor 24/7).
+>
+> ```bash
+> cd ~/Cockpit/.claude/skills && git clone https://github.com/matheusmja1998-droid/cockpit-guardiao.git
+> ```
+>
+> Aí roda `/cockpit-guardiao` pra começar o setup."
+
+---
+
 # Meta Ads Ratos
 
 Skill completa para gestao de Meta Ads via SDK oficial (`facebook-business`). Substitui o MCP fb-ads-mcp-server com mais poder: duplicacao de campanhas/ads, swap de url_tags, e acesso total a API.

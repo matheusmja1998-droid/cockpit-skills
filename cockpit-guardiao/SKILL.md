@@ -3,6 +3,172 @@ name: cockpit-guardiao
 description: Cria o sistema Guardião (monitoramento 24/7 de anúncios Meta Ads via n8n + Claude API + Telegram) pra um cliente da WinVision. Use quando o Matheus disser "cria um Guardião pra [cliente]", "monta o Guardião pro lançamento X", "quero monitorar os anúncios do [cliente]", "Guardião pro Caio/Kleber/EV/Jonas/Fábio". Também dispara com /guardiao.
 ---
 
+---
+
+## 🚀 Setup conversacional (primeira vez)
+
+> Quando o usuário rodar `/cockpit-guardiao` pela primeira vez (sem `TELEGRAM_BOT_TOKEN` configurado) ou `/cockpit-guardiao setup`.
+
+### Passo 1 — Verificar pré-requisitos
+
+> "Pra Cockpit Guardião funcionar, preciso de 3 coisas:
+>
+> 1. ✅ Skill `cockpit-meta` já configurada (precisa do token Meta)
+> 2. ✅ Conta n8n (gratuita ou paga)
+> 3. ✅ Telegram instalado no celular
+>
+> Tu tem tudo isso? (sim/não)"
+
+Se não tem `cockpit-meta` configurada: parar e pedir pra rodar `/cockpit-meta setup` primeiro.
+
+### Passo 2 — Criar bot do Telegram
+
+> "Primeiro, vamos criar teu bot pessoal do Cockpit Guardião. Faz isso comigo:
+>
+> 1. Abre o Telegram no celular ou desktop
+> 2. Procura por `@BotFather` (bot oficial do Telegram pra criar bots)
+> 3. Manda comando: `/newbot`
+> 4. Quando perguntar nome: digita `Cockpit Guardião [Tua Agência]`
+> 5. Quando perguntar username (precisa terminar em 'bot'): digita `cockpit_guardiao_[teu_nome]_bot`
+> 6. BotFather vai te mandar uma mensagem com um TOKEN parecido com:
+>    `1234567890:ABCdefGHIjklMNOpqrsTUVwxyz`
+>
+> Cola esse token aqui."
+
+Salvar:
+```bash
+echo "TELEGRAM_BOT_TOKEN={{bot_token}}" >> ~/Cockpit/.env
+```
+
+### Passo 3 — Pegar Chat ID
+
+> "Agora preciso saber o teu chat_id (pra saber pra quem o bot vai mandar alerta).
+>
+> 1. Procura no Telegram o bot que tu acabou de criar (pelo nome dele)
+> 2. Manda qualquer mensagem pra ele (ex: 'oi')
+> 3. Espera 5 segundos
+>
+> Me confirma quando mandou."
+
+Aguardar. Aí rodar:
+```bash
+source ~/Cockpit/.env
+curl -s "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/getUpdates" | python3 -c "import sys,json; data=json.load(sys.stdin); print(data['result'][-1]['message']['chat']['id'] if data['result'] else 'NENHUMA MENSAGEM ENCONTRADA')"
+```
+
+Salvar o chat_id retornado:
+```bash
+echo "TELEGRAM_CHAT_ID={{chat_id}}" >> ~/Cockpit/.env
+```
+
+### Passo 4 — Configurar n8n
+
+> "Agora o motor que vai rodar o monitor 24/7. Tu já tem conta n8n? (sim/não)"
+
+**Se não:**
+> "Cria uma agora gratuita:
+>
+> 🔗 https://n8n.cloud
+>
+> Plano gratuito aguenta até 1.000 execuções/mês — suficiente pra começar.
+>
+> Me confirma quando criar."
+
+**Se sim:** continuar.
+
+> "Agora preciso da URL da tua instância n8n e da API Key.
+>
+> 1. URL: tipo `https://[teu-nome].app.n8n.cloud` ou a URL self-host
+> 2. Vai em **Settings → API → Create API Key**
+> 3. Cria uma chave nova
+> 4. Copia
+>
+> Me passa as 2 coisas (URL + API Key)."
+
+Salvar:
+```bash
+cat >> ~/Cockpit/.env << EOF
+N8N_URL={{n8n_url}}
+N8N_API_KEY={{n8n_key}}
+EOF
+```
+
+### Passo 5 — Importar workflow do Guardião
+
+Rodar:
+```bash
+# Baixa template do workflow
+curl -s https://raw.githubusercontent.com/matheusmja1998-droid/cockpit-guardiao/main/templates/monitor1.json -o /tmp/cockpit-guardiao-workflow.json
+
+# Importa via API n8n
+source ~/Cockpit/.env
+curl -X POST "$N8N_URL/api/v1/workflows" \
+  -H "X-N8N-API-KEY: $N8N_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d @/tmp/cockpit-guardiao-workflow.json
+```
+
+> "✅ Workflow importado pro teu n8n."
+
+### Passo 6 — Configurar regras de alerta
+
+Perguntar:
+
+> "Vou configurar as regras-padrão. Posso ir pelos defaults ou tu quer customizar?
+>
+> **Defaults:**
+> - CPA acima de R$80 dispara alerta
+> - Frequência acima de 3.0 dispara alerta
+> - Gasto sem conversão por 24h dispara alerta
+> - Monitora todas as contas que teu token tem acesso
+> - Roda a cada 30 min
+>
+> Vai pelo padrão ou quer ajustar? (padrão/ajustar)"
+
+Se ajustar: perguntar 1 por 1 (CPA limite, frequência limite, tempo sem conversão).
+
+Salvar config em `~/Cockpit/.cockpit/n8n/guardiao-config.md`.
+
+### Passo 7 — Ativar workflow
+
+> "Vamos ativar o monitor agora."
+
+```bash
+# Pega o ID do workflow recém-importado
+WORKFLOW_ID=$(curl -s "$N8N_URL/api/v1/workflows" -H "X-N8N-API-KEY: $N8N_API_KEY" | python3 -c "import sys,json; data=json.load(sys.stdin); print([w['id'] for w in data['data'] if 'guardiao' in w['name'].lower()][0])")
+
+# Ativa
+curl -X POST "$N8N_URL/api/v1/workflows/$WORKFLOW_ID/activate" \
+  -H "X-N8N-API-KEY: $N8N_API_KEY"
+```
+
+### Passo 8 — Teste ao vivo
+
+> "Vamos testar. Vou forçar uma execução agora."
+
+```bash
+curl -X POST "$N8N_URL/api/v1/workflows/$WORKFLOW_ID/execute" \
+  -H "X-N8N-API-KEY: $N8N_API_KEY"
+```
+
+> "Confere o Telegram do bot Cockpit Guardião. Deve chegar uma mensagem nos próximos 30 segundos. Chegou?"
+
+### Passo 9 — Confirmação + próximos passos
+
+> "✅ **Cockpit Guardião rodando 24/7.**
+>
+> A cada 30 minutos ele vai checar tuas contas e te avisar se algo foge da meta.
+>
+> **Próxima skill:**
+>
+> ```bash
+> cd ~/Cockpit/.claude/skills && git clone https://github.com/matheusmja1998-droid/cockpit-debrief.git
+> ```
+>
+> Aí roda `/cockpit-debrief` pra começar o setup."
+
+---
+
 # Skill: Guardião
 
 Gera o sistema Guardião completo pra um cliente: Monitor 1 (anúncios estourados a cada 30min) + Monitor 2 (briefing de ritmo 6h/12h/16h) + Monitor 3 (saúde da conta a cada 2h). Cria credentials no n8n, sobe os 3 workflows via API, ativa e salva doc no Obsidian.

@@ -10,6 +10,93 @@ description: >
   "acabou o lançamento do X", "quero entender o que aconteceu".
 ---
 
+---
+
+## 🚀 Setup conversacional (primeira vez)
+
+> Quando o usuário rodar `/cockpit-debrief` pela primeira vez ou `/cockpit-debrief setup`.
+
+### Passo 1 — Verificar pré-requisitos
+
+> "Cockpit Debrief faz análise pós-campanha em 5 min. Pra funcionar, preciso de:
+>
+> ✅ Skill `cockpit-meta` configurada (token Meta)
+> ✅ Pasta `dados/` na raiz do Cockpit (eu crio se não existir)
+>
+> Pronto pra configurar?"
+
+### Passo 2 — Criar pastas necessárias
+
+```bash
+mkdir -p ~/Cockpit/dados/lancamentos ~/Cockpit/dados/templates ~/Cockpit/clientes/_modelo/debriefs
+```
+
+### Passo 3 — Configurar template padrão
+
+> "Vou criar um template-base de debrief. Tu pode customizar depois."
+
+```bash
+cat > ~/Cockpit/dados/templates/debrief-padrao.md << 'EOF'
+# Debrief — {{cliente}} — {{periodo}}
+
+## Resumo Executivo
+- Investimento total: R$
+- Leads gerados:
+- Vendas:
+- ROAS:
+
+## Por Posicionamento
+[gerado automaticamente]
+
+## Por Criativo
+[gerado automaticamente]
+
+## Por Campanha
+[gerado automaticamente]
+
+## Por Temperatura (frio/morno/quente)
+[gerado automaticamente]
+
+## Recomendações
+[gerado automaticamente]
+EOF
+```
+
+### Passo 4 — Configurar pra cliente real (opcional)
+
+> "Tu quer testar com um cliente real teu agora? (sim/não)
+>
+> Se sim, me diz o slug do cliente (pasta dele em `clientes/`).
+>
+> Se não, pulo essa parte e tu testa quando quiser."
+
+Se sim: validar que `clientes/[slug]/dossie.md` existe. Senão, sugerir rodar `/cockpit-dossie [slug]` antes.
+
+### Passo 5 — Teste de validação
+
+> "Pra validar que tudo tá conectado certo, vou rodar um debrief de teste com dados de exemplo."
+
+Rodar comando teste com dados sintéticos. Mostrar output (relatório markdown gerado).
+
+### Passo 6 — Confirmação + próximos passos
+
+> "✅ **Cockpit Debrief configurado.**
+>
+> Pra usar:
+>
+> - `/cockpit-debrief [cliente] [periodo]` — análise completa
+> - `/cockpit-debrief [cliente] últimos 30 dias` — atalho
+>
+> **Próxima skill:**
+>
+> ```bash
+> cd ~/Cockpit/.claude/skills && git clone https://github.com/matheusmja1998-droid/cockpit-report.git
+> ```
+>
+> Roda `/cockpit-report` pra começar o setup."
+
+---
+
 # /debrief-lancamento — Debriefing de Lançamento
 
 ## Dependências

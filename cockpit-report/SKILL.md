@@ -3,6 +3,116 @@ name: cockpit-report
 description: Gera relatório semanal de performance pra um cliente da WinVision ou L.M Agência. Cruza dados de Meta Ads, Kommo, planilhas e atividades da semana, gera análise com recomendações e envia via Telegram pro Matheus ou direto pro cliente. Use quando o Matheus disser "faz o relatório semanal do [cliente]", "manda o report da semana", "relatório dos últimos 7 dias", ou /relatorio-semanal-cliente. Pode rodar manual ou via cron toda segunda 8h.
 ---
 
+---
+
+## 🚀 Setup conversacional (primeira vez)
+
+> Quando rodar `/cockpit-report` pela primeira vez ou `/cockpit-report setup`.
+
+### Passo 1 — Verificar pré-requisitos
+
+> "Cockpit Report manda relatório semanal automático. Preciso configurar:
+>
+> 1. Conexão com Meta (já tem se Meta tá configurada)
+> 2. CRM (Kommo/RD/HubSpot) — opcional
+> 3. Pra quem manda o relatório (Telegram teu ou direto pro cliente)
+> 4. Que dia/hora dispara
+> 5. Identidade visual brandizada
+>
+> Vamos? (vai/cancelar)"
+
+### Passo 2 — Configurar destino dos relatórios
+
+> "Pra quem o relatório vai? Tem 3 opções:
+>
+> 1. **Pra mim** (gestor) — eu reviso e mando manual pro cliente
+> 2. **Direto pro cliente** — chega no Telegram dele
+> 3. **Misto** — mandar pra mim primeiro, eu aprovo, aí dispara pro cliente
+>
+> Qual? (1/2/3)"
+
+Salvar:
+```bash
+echo "REPORT_DESTINO={{1|2|3}}" >> ~/Cockpit/.env
+```
+
+### Passo 3 — Configurar CRM (opcional)
+
+> "Tu usa CRM? (sim/não)
+>
+> Se sim, qual? (Kommo/RD/HubSpot/outro)"
+
+Se Kommo:
+```bash
+echo "Pra conectar Kommo, preciso de:"
+echo "1. Subdomínio (ex: minhaagencia.kommo.com → 'minhaagencia')"
+echo "2. Token (em Configurações → Integrações → Token longo)"
+```
+
+Salvar:
+```bash
+cat >> ~/Cockpit/.env << EOF
+KOMMO_SUBDOMAIN={{subdomain}}
+KOMMO_TOKEN={{token}}
+EOF
+```
+
+### Passo 4 — Configurar cron
+
+> "Quando o relatório dispara automaticamente?
+>
+> Padrão: **toda segunda às 8h**
+>
+> Tu quer:
+> 1. Padrão (segunda 8h)
+> 2. Outro dia/horário
+> 3. Manual (rodo quando quero)"
+
+Se 2: perguntar dia da semana e horário. Configurar cron:
+```bash
+crontab -l | { cat; echo "0 8 * * 1 cd ~/Cockpit && claude /cockpit-report todos"; } | crontab -
+```
+
+### Passo 5 — Brandização
+
+> "Vou usar tua identidade visual nos relatórios.
+>
+> Tu tem:
+> - Logo? (caminho do arquivo)
+> - Cor principal? (hex)
+> - Cor secundária? (hex)
+> - Fonte preferida? (ou padrão)
+>
+> Manda os dados ou diz 'pula' pra usar padrão neutro."
+
+Salvar em `~/Cockpit/marca/design-guide.md`.
+
+### Passo 6 — Teste de validação
+
+> "Vou gerar um relatório de teste agora pra ti ver."
+
+Rodar com dados de 1 cliente real ou exemplo. Mostrar output.
+
+### Passo 7 — Confirmação + próximos passos
+
+> "✅ **Cockpit Report configurado.**
+>
+> Comandos:
+> - `/cockpit-report [cliente] últimos 7 dias` — manual
+> - `/cockpit-report todos` — gera de todos clientes ativos
+>
+> Cron rodando {{dia/hora}}.
+>
+> **Próxima skill:**
+>
+> ```bash
+> cd ~/Cockpit/.claude/skills && git clone https://github.com/matheusmja1998-droid/cockpit-creative.git
+> ```
+>
+> Roda `/cockpit-creative` pra começar o setup."
+
+---
+
 # Skill: Relatório Semanal de Cliente
 
 Gera relatório executivo dos últimos 7 dias por cliente, cruzando todas as fontes de dados disponíveis. Substitui aquela hora chata de toda segunda compilando manualmente.
